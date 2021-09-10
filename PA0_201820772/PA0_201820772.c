@@ -13,13 +13,16 @@
  *
  **********************************************************************/
 
+ /* To avoid security error on Visual Studio */
+#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable : 4996)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 
- /* To avoid security error on Visual Studio */
-#define _CRT_SECURE_NO_WARNINGS
-#pragma warning(disable : 4996)
+#define true 1
+#define false 0
 
 #define MAX_NR_TOKENS 32	/* Maximum number of tokens in a command */
 #define MAX_TOKEN_LEN 64	/* Maximum length of single token */
@@ -61,13 +64,59 @@
  *	Return 0 after filling in @nr_tokens and @tokens[] properly
  *
  */
+
 static int parse_command(char* command, int* nr_tokens, char* tokens[])
 {
-	/* TODO
-	 * Followings are example code. You should delete them and implement
-	 * your own code here
-	 */
+	char* temp;
+	char token[MAX_TOKEN_LEN];
+	char flag = false;
+	int cur = 0, token_cur = 0;
 
+	command[find_length(command) - 1] = '\0';
+
+	while (true) {
+		if (command[cur] == '\0') {
+			if (flag) {
+				temp = (char*)malloc(sizeof(char) * 20);
+				for (int j = 0; j < token_cur; j++)
+					temp[j] = token[j];
+				temp[token_cur] = '\0';
+				tokens[(*nr_tokens)] = temp;
+				(*nr_tokens)++;
+				token_cur = 0;
+			}
+
+			break;
+		}
+
+		if (isspace(command[cur]) != 0) {
+			if (flag) {
+				temp = (char*)malloc(sizeof(char) * 20);
+				for (int j = 0; j < token_cur; j++)
+					temp[j] = token[j];
+				temp[token_cur] = '\0';
+				tokens[(*nr_tokens)] = temp;
+				(*nr_tokens)++;
+				token_cur = 0;
+			}
+			flag = false;
+			cur++;
+			continue;
+		}
+
+		flag = true;
+		token[token_cur++] = command[cur];
+
+		cur++;
+	}
+	printf("token: %d\n", *nr_tokens);
+}
+
+static int find_length(char* line) {
+	int len = 0;
+	for (int i = 0; line[i] != '\0'; i++)
+		len++;
+	return len;
 }
 
 
