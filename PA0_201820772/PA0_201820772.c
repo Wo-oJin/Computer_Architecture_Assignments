@@ -67,7 +67,7 @@ static int parse_command(char* command, int* nr_tokens, char* tokens[])
 	 * Followings are example code. You should delete them and implement
 	 * your own code here
 	 */
-	return 0;
+
 }
 
 
