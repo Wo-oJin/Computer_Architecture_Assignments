@@ -12,21 +12,21 @@
  * GNU General Public License for more details.
  *
  **********************************************************************/
-
- /* To avoid security error on Visual Studio */
+/* To avoid security error on Visual Studio */
 #define _CRT_SECURE_NO_WARNINGS
 #pragma warning(disable : 4996)
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-
-#define true 1
-#define false 0
+#include <ctype.h>
 
 #define MAX_NR_TOKENS 32	/* Maximum number of tokens in a command */
 #define MAX_TOKEN_LEN 64	/* Maximum length of single token */
 #define MAX_COMMAND	256		/* Maximum length of command string */
+
+#define true 1
+#define false 0
 
 /***********************************************************************
  * parse_command
@@ -67,12 +67,10 @@
 
 static int parse_command(char* command, int* nr_tokens, char* tokens[])
 {
-	char* temp;
-	char token[MAX_TOKEN_LEN];
-	char flag = false;
-	int cur = 0, token_cur = 0;
-
-	command[find_length(command) - 1] = '\0';
+	char* temp; // parsing한 token을 tokens 배열에 옮기기 위해 매번 동적할당 되는 임시 배열
+	char token[MAX_TOKEN_LEN]; // parsing 대상이 되는 token을 저장하는 배열
+	char flag = false; // white space를 만났을 시 현재 저장되어 있는 token의 유무를 판별하는 변수
+	int cur = 0, token_cur = 0; // 현재 command의 index 위치, 현재 token의 index 위치
 
 	while (true) {
 		if (command[cur] == '\0') {
@@ -109,16 +107,7 @@ static int parse_command(char* command, int* nr_tokens, char* tokens[])
 
 		cur++;
 	}
-	printf("token: %d\n", *nr_tokens);
 }
-
-static int find_length(char* line) {
-	int len = 0;
-	for (int i = 0; line[i] != '\0'; i++)
-		len++;
-	return len;
-}
-
 
 /***********************************************************************
  * The main function of this program. DO NOT CHANGE THE CODE BELOW
