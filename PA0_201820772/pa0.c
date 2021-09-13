@@ -75,7 +75,7 @@ static int parse_command(char* command, int* nr_tokens, char* tokens[])
 	while (true) {
 		if (command[cur] == '\0') {
 			if (flag) {
-				temp = (char*)malloc(sizeof(char) * MAX_TOKEN_LEN);
+				temp = (char*)malloc(sizeof(char) * (MAX_TOKEN_LEN+1));
 				for (int j = 0; j < token_cur; j++)
 					temp[j] = token[j];
 				temp[token_cur] = '\0';
@@ -89,7 +89,7 @@ static int parse_command(char* command, int* nr_tokens, char* tokens[])
 
 		if (isspace(command[cur]) != 0) {
 			if (flag) {
-				temp = (char*)malloc(sizeof(char) * MAX_TOKEN_LEN);
+				temp = (char*)malloc(sizeof(char) * (MAX_TOKEN_LEN+1));
 				for (int j = 0; j < token_cur; j++)
 					temp[j] = token[j];
 				temp[token_cur] = '\0';
