@@ -9,7 +9,7 @@
 #define true 1
 #define false 0
 
-#define MAP_SIZE 32
+#define MAP_SIZE 50
 #define WORD_LEN 5
 
 enum slotStatus { empty, deleted, inuse};
@@ -71,30 +71,25 @@ int* search(map* hm, char* key) { // Hash Map에서 인자로 전달된 key에 대응되는 v
 	return hm->bucket[hv].val;
 }
 
-void makeMap(map* hm) { // Hash Map 초기화 함수(register number, opcode/funct number)
+void makeMap(map* hm) { // Hash Map 초기화 함수(opcode/funct number, register number)
 	mapInit(hm, makeHash);
 	int* arr;
 
-	//add sub and or nor
-	insert(hm, "add", 0, 0x20); insert(hm, "t0", 8, 0);
-	insert(hm, "t1", 9, 0); insert(hm, "t2", 10, 0);
+	// opcode/funct
+	insert(hm, "add", 0, 0x20); insert(hm, "addi", 0x08, 0); insert(hm, "andi", 0x0c, 0); insert(hm, "or", 0, 0x25);
+	insert(hm, "sub", 0, 0x22); insert(hm, "and", 0, 0x24); insert(hm, "ori", 0x0d, 0); insert(hm, "nor", 0, 0x27);
+	insert(hm, "sll", 0, 0x00); insert(hm, "srl", 0, 0x02); insert(hm, "sra", 0, 0x03); insert(hm, "lw", 0x23,0);
+	insert(hm, "sw", 0x2b,0); 
 
-	insert(hm, "s1", 17, 0); insert(hm, "s3", 19, 0);
-
-	insert(hm, "sub", 0, 0x22); insert(hm, "t3", 11, 0);
-	insert(hm, "t4", 12, 0); insert(hm, "t5", 13, 0);
-
-	insert(hm, "and", 0, 0x24); insert(hm, "s0", 16, 0);
-	insert(hm, "a0", 4, 0); insert(hm, "a2", 6, 0);
-
-	insert(hm, "or", 0, 0x25); insert(hm, "s2",18, 0);
-	insert(hm, "zero", 0, 0); 
-
-	insert(hm, "nor", 0, 0x27); insert(hm, "t9", 25, 0);
-	insert(hm, "sp", 29, 0); insert(hm, "gp", 28, 0);
-
-	insert(hm, "addi", 0x08, 0); insert(hm, "sll", 0x00,0);
-	insert(hm, "srl", 0x02, 0);
+	// register number
+	insert(hm, "zero", 0, 0); insert(hm, "at", 1, 0); insert(hm, "v0", 2, 0); insert(hm, "v1", 3, 0);
+	insert(hm, "a0", 4, 0); insert(hm, "a1", 5, 0); insert(hm, "a2", 6, 0); insert(hm, "a3", 7, 0);
+	insert(hm, "t0", 8, 0); insert(hm, "t1", 9, 0); insert(hm, "t2", 10, 0); insert(hm, "t3", 11, 0);
+	insert(hm, "t4", 12, 0); insert(hm, "t5", 13, 0); insert(hm, "t6", 14, 0); insert(hm, "t7", 15, 0);
+	insert(hm, "s0", 16, 0); insert(hm, "s1", 17, 0); insert(hm, "s2", 18, 0); insert(hm, "s3", 19, 0);
+	insert(hm, "s4", 20, 0); insert(hm, "s5", 21, 0); insert(hm, "s6", 22, 0); insert(hm, "s7", 23, 0);
+	insert(hm, "t8", 24, 0); insert(hm, "t9", 25, 0); insert(hm, "k1", 26, 0); insert(hm, "k2", 27, 0);
+	insert(hm, "gp", 28, 0); insert(hm, "sp", 29, 0); insert(hm, "fp", 30, 0); insert(hm, "ra", 31, 0); 
 }
 
 static int parse_command(char* assembly, int* nr_tokens, char* tokens[]) //사용자가 입력한 어셈블리어를 white space를 기준으로 split
@@ -185,20 +180,29 @@ int strtonum(char* num) { //I_format, shift 어셈블리어에 포함된 10진수, 16진수 s
 }
 
 // op(6) rs(5) rt(5) rd(5) shamt(5) funct(6)
-void makeRformat(map* hm, int* r_format, char* tokens[]) { //어셈블리어 -> R_format 변환
+void makeRformat(map* hm, int* r_format, char* tokens[], int shamt) { //어셈블리어 -> R_format 변환
+	char flag = false;
+	if (shamt > 0)
+		flag = true;
 	int* op_funct = search(hm, tokens[0]);
 	r_format[0] = op_funct[0]; 
 
 	int* val = search(hm, tokens[2]);
-	r_format[1] = val[0];
+	if (!flag) 
+		r_format[1] = val[0];
+	else
+		r_format[2] = val[0];
 
 	val = search(hm, tokens[3]);
-	r_format[2] = val[0];
+	if(!flag)
+		r_format[2] = val[0];
+	else
+		r_format[1] = 0;
 	
 	val = search(hm, tokens[1]);
 	r_format[3] = val[0];
 
-	r_format[4] = 0;
+	r_format[4] = shamt;
 	r_format[5] = op_funct[1];
 }
 
@@ -216,17 +220,13 @@ void makeIformat(map* hm, int* I_format, char* tokens[]) { //어셈블리어 -> I_for
 	I_format[3] = strtonum(tokens[3]);
 }
 
-void makeSformat(map* hm, int* S_format, char* tokens[]) { //어셈블리어 -> S_format 변환
-	//* TODO;
-}
-
 int main(void) {
 	map hm;
 	makeMap(&hm);
 	int* format;
 	int format_size;
 	char flag = false;
-	char assembly[] = "add t0 t1 t2";
+	char assembly[] = "sll t0 t1 10";
 
 	int nr_tokens;
 	char** tokens = (char**)malloc(sizeof(char*) * 5);
@@ -236,7 +236,7 @@ int main(void) {
 		if (!strcmp("sll", tokens[0]) || !strcmp("srl", tokens[0])) {
 			format_size = 6;
 			format = (int*)malloc(sizeof(int) * format_size);
-			makeSformat(&hm, format, tokens); //어셈블리어 -> S_format으로 변환
+			makeRformat(&hm, format, tokens,strtonum(tokens[3])); //어셈블리어 -> R_format으로 변환
 		}
 		else {
 			flag = true;
@@ -248,7 +248,7 @@ int main(void) {
 	else {
 		format_size = 6;
 		format = (int*)malloc(sizeof(int) * format_size);
-		makeRformat(&hm, format, tokens); //어셈블리어 -> R_format으로 변환
+		makeRformat(&hm, format, tokens, 0); //어셈블리어 -> R_format으로 변환
 	}
 	for (int i = 0; i < format_size; i++)
 		printf("%d ", format[i]);
