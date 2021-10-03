@@ -65,7 +65,7 @@ int* search(map* hm, char* key) { // Hash Map에서 인자로 전달된 key에 대응되는 v
 		hv %= MAP_SIZE;
 
 		if (hv == temp)
-			return -1;
+			return NULL;
 	}
 
 	return hm->bucket[hv].val;
@@ -226,13 +226,13 @@ int main(void) {
 	int* format;
 	int format_size;
 	char flag = false;
-	char assembly[] = "add t0 t1 t2";
+	char assembly[] = "addi sp sp -0x10";
 
 	int nr_tokens;
 	char** tokens = (char**)malloc(sizeof(char*) * 5);
 	parse_command(assembly, &nr_tokens, tokens);
 
-	if (search(&hm, tokens[3]) == -1) {
+	if (search(&hm, tokens[3]) == NULL) {
 		if (!strcmp("sll", tokens[0]) || !strcmp("srl", tokens[0])) {
 			format_size = 6;
 			format = (int*)malloc(sizeof(int) * format_size);
