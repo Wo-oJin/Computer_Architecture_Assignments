@@ -226,7 +226,7 @@ int main(void) {
 	int* format;
 	int format_size;
 	char flag = false;
-	char assembly[] = "sll t0 t1 10";
+	char assembly[] = "add t0 t1 t2";
 
 	int nr_tokens;
 	char** tokens = (char**)malloc(sizeof(char*) * 5);
