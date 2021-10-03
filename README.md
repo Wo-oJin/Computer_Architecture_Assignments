@@ -4,5 +4,5 @@
 **PA0**: string과 관련된 library를 사용하지 않고 사용자가 입력한 문자열에서 White Space를 기준으로 분리된 문자들을 저장하는 parse_command 함수 구현.</br>
          (정확한 과제 내용은 https://git.ajou.ac.kr/sslab/ca-pa0 에서 확인하실 수 있습니다.)
  
-**PA1**: 사용자가 입력한 Assembly Language를 알맞은 format의 8자리 16진수로 표현된 MIPS Instruction으로 전환하는 translate 함수 구현.</br>
+**PA1**: 사용자가 입력한 Assembly Language를 8자리 16진수로 표현된 MIPS Instruction으로 전환하는 translate 함수 구현.</br>
          (정확한 과제 내용은 https://git.ajou.ac.kr/sslab/ca-pa1 에서 확인하실 수 있습니다.)
