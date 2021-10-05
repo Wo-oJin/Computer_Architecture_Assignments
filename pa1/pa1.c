@@ -12,7 +12,6 @@
  * GNU General Public License for more details.
  *
  **********************************************************************/
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -257,7 +256,7 @@ static unsigned int translate(int nr_tokens, char* tokens[])
 	char flag = false;
 
 	if (search(&hm, tokens[3]) == NULL) {
-		if (!strcmp("sll", tokens[0]) || !strcmp("srl", tokens[0])) {
+		if (!strcmp("sll", tokens[0]) || !strcmp("srl", tokens[0]) || !strcmp("sra", tokens[0])) {
 			format_size = 6;
 			format = (int*)malloc(sizeof(int) * format_size);
 			makeRformat(&hm, format, tokens, strtonum(tokens[3])); //어셈블리어 -> R_format으로 변환
