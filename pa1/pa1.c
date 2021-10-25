@@ -148,8 +148,8 @@ void ten_to_two(int* instruction, int n, int size, int* idx) { //전달된 크기만큼
 	int tp = size;
 	char negative = false;
 	size -= 1;
-
 	if (n < 0) {
+		n++;
 		n *= -1;
 		negative = true;
 	}
@@ -194,9 +194,9 @@ int strtonum(char* num) { //I_format, shift 어셈블리어에 포함된 10진수, 16진수 s
 
 	if (num[0] == '-') {
 		if (num[1] == '0')
-			return strtoimax(num, &ptr, 16) + 1;
+			return strtoimax(num, &ptr, 16);
 		else
-			return strtoimax(num, &ptr, 10) + 1;
+			return strtoimax(num, &ptr, 10);
 	}
 	else {
 		if (num[0] == '0')
