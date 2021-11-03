@@ -137,7 +137,7 @@ static inline bool strmatch(char* const str, const char* expect)
  */
 static int process_instruction(unsigned int instr)
 {
-	unsigned char instruction[8];
+	unsigned char instruction[9];
 	int decimal;
 	int div;
 
@@ -154,15 +154,14 @@ static int process_instruction(unsigned int instr)
 
 	while (idx >= 0)
 		instruction[idx--] = '0';
+	instruction[8] = '\0';
 
-	printf("0x");
 	for (int i = 0; i < 8; i++)
 		printf("%c", instruction[i]);
-
 	printf("\n");
-
-	if (strcmp(instruction, "ffffffff") == 0)
+	if (!strcmp(instruction, "ffffffff")) 
 		return 0;
+
 	return 1;
 }
 
@@ -270,6 +269,7 @@ static int run_program(void)
 {
 	pc = INITIAL_PC;
 
+	printf("run program -------------------------------------------------\n\n");
 	while (true) {
 
 		char hexa[8];
@@ -301,17 +301,13 @@ static int run_program(void)
 				instruction += (hexa[i] - 'a' + 10) * mul;
 		}
 
-		printf("0x");
-		for (int i = 0; i < 8; i++)
-			printf("%c", hexa[i]);
-		printf("\n");
 		int flag = process_instruction(instruction);
-		printf("\n");
-		if (!flag) //meet halt
-			return 0;
+		if (!flag)  //meet halt
+			break;
 
 		pc += 4;
 	}
+	printf("\nfinish program -------------------------------------------------\n\n");
 
 	return 0;
 }
@@ -449,8 +445,9 @@ static int __parse_command(char* command, int* nr_tokens, char* tokens[])
 int main(int argc, char* const argv[])
 {
 	char command[MAX_COMMAND] = { '\0' };
-	FILE* input = stdin;
-
+	//FILE* input = stdin;
+	FILE* input = fopen("C:\\Users\\dnwls\\input_file\\input2.txt","r");
+	
 	if (argc > 1) {
 		input = fopen(argv[1], "r");
 		if (!input) {
@@ -479,6 +476,7 @@ int main(int argc, char* const argv[])
 		char* tokens[MAX_NR_TOKENS] = { NULL };
 		int nr_tokens = 0;
 
+		printf("command: %s\n", command);
 		for (size_t i = 0; i < strlen(command); i++) {
 			command[i] = tolower(command[i]);
 		}
