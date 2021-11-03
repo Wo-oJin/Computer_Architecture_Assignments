@@ -137,9 +137,34 @@ static inline bool strmatch(char* const str, const char* expect)
  */
 static int process_instruction(unsigned int instr)
 {
-	return 0;
-}
+	unsigned char instruction[8];
+	int decimal;
+	int div;
 
+	int idx = 7;
+	while (instr > 0) { //2자리씩 4번 저장된 10진수 -> 8자리 16진수
+		div = instr % 16;
+		if (div < 10)
+			instruction[idx--] = 48 + div;
+		else
+			instruction[idx--] = 97 + (div - 10);
+
+		instr /= 16;
+	}
+
+	while (idx >= 0)
+		instruction[idx--] = '0';
+
+	printf("0x");
+	for (int i = 0; i < 8; i++)
+		printf("%c", instruction[i]);
+
+	printf("\n");
+
+	if (strcmp(instruction, "ffffffff") == 0)
+		return 0;
+	return 1;
+}
 
 /**********************************************************************
  * load_program
@@ -178,7 +203,7 @@ static int load_program(char* const filename)
 {
 	FILE* input = fopen(filename, "r");
 
-	if (!input){
+	if (!input) {
 		printf("error!\n");
 		return -EINVAL;
 	}
@@ -245,10 +270,51 @@ static int run_program(void)
 {
 	pc = INITIAL_PC;
 
+	while (true) {
+
+		char hexa[8];
+		int decimal;
+		int div;
+
+		for (int i = 0, k = 0; i < 4; i++) { //2자리씩 4번 저장된 10진수 -> 8자리 16진수
+			decimal = memory[pc + i];
+
+			div = decimal / 16;
+			if (div < 10)
+				hexa[k++] = 48 + div;
+			else
+				hexa[k++] = 97 + (div - 10);
+
+			div = decimal % 16;
+			if (div < 10)
+				hexa[k++] = 48 + div;
+			else
+				hexa[k++] = 97 + (div - 10);
+		}
+
+		unsigned int instruction = 0;
+		int mul = 1;
+		for (int i = 7; i >= 0; i--, mul *= 16) {
+			if (hexa[i] <= 57)
+				instruction += (hexa[i] - '0') * mul;
+			else
+				instruction += (hexa[i] - 'a' + 10) * mul;
+		}
+
+		printf("0x");
+		for (int i = 0; i < 8; i++)
+			printf("%c", hexa[i]);
+		printf("\n");
+		int flag = process_instruction(instruction);
+		printf("\n");
+		if (!flag) //meet halt
+			return 0;
+
+		pc += 4;
+	}
+
 	return 0;
 }
-
-
 
 /*====================================================================*/
 /*          ****** DO NOT MODIFY ANYTHING FROM THIS LINE ******       */
