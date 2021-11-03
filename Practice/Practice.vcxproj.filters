@@ -18,5 +18,8 @@
     <ClCompile Include="practice.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="process_test.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

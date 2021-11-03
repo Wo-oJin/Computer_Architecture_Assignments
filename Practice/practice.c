@@ -35,6 +35,109 @@ typedef unsigned char bool;
 #define true	1
 #define false	0
 
+#define MAP_SIZE 100
+#define WORD_LEN 5
+enum slotStatus { empty, deleted, inuse };
+enum format {r,i,j};
+typedef int (*hashfunc)(char* key);
+
+typedef struct Slot { //Hash Map을 이루는 각 slot
+	char key[WORD_LEN];
+	int* val;
+	enum slotStatus status;
+}slot;
+
+typedef struct HashMap { //Hash Map
+	slot bucket[MAP_SIZE];
+	hashfunc hf;
+}map;
+
+map hm;
+
+void mapInit(map* hm, hashfunc hf) {
+	for (int i = 0; i < MAP_SIZE; i++)
+		(hm->bucket[i]).status = empty;
+	hm->hf = hf;
+}
+
+int makeHash(char* str) { //인자로 전달된 key값을 hash value로 전환
+	int hash = 0;
+	while (*str != '\0') {
+		hash += (int)(*str) % MAP_SIZE;
+		str++;
+	}
+
+	return hash % MAP_SIZE;
+}
+
+void insert(map* hm, char* key, int val1, int val2, int val3) { //Hash Map에 인자로 전달된 (key, value)를 저장
+	int* arr = (int*)malloc(sizeof(int) * 3);
+	arr[0] = val1; arr[1] = val2; arr[2] = val3;
+	int hv = hm->hf(key);
+
+	while (hm->bucket[hv].status == inuse) {
+		hv++;
+		hv %= MAP_SIZE;
+	}
+
+	hm->bucket[hv].val = arr;
+	strcpy(hm->bucket[hv].key, key);
+	hm->bucket[hv].status = inuse;
+}
+
+int* search(map* hm, char* key) { // Hash Map에서 인자로 전달된 key에 대응되는 value을 반환
+	int hv = hm->hf(key);
+	int temp = hv;
+	while (strcmp(key, hm->bucket[hv].key)) {
+		hv++;
+		hv %= MAP_SIZE;
+
+		if (hv == temp)
+			return NULL;
+	}
+
+	return hm->bucket[hv].val;
+}
+
+void makeMap(map* hm) { // Hash Map 초기화 함수(opcode/funct number, register number)
+	mapInit(hm, makeHash);
+	int* arr;
+
+	// opcode/funct
+	insert(hm, "add", 0, 0x20, r); insert(hm, "addi", 0x08, 0, i); insert(hm, "andi", 0x0c, 0, i); insert(hm, "or", 0, 0x25, r);
+	insert(hm, "sub", 0, 0x22, r); insert(hm, "and", 0, 0x24, r); insert(hm, "ori", 0x0d, 0, i); insert(hm, "nor", 0, 0x27, r);
+	insert(hm, "sll", 0, 0x00, r); insert(hm, "srl", 0, 0x02, r); insert(hm, "sra", 0, 0x03, r); insert(hm, "lw", 0x23, 0, i);
+	insert(hm, "sw", 0x2b, 0, i); insert(hm, "slt", 0, 0x2a, r); insert(hm, "slti", 0x0a, 0, i); insert(hm, "beq", 0x04, 0, i);
+	insert(hm, "bne", 0x05, 0, i); insert(hm, "jr", 0, 0x08, r); insert(hm, "j", 0x02, 0, j); insert(hm, "jal", 0x03, 0, j);
+	insert(hm, "halt", 0x3f, 0, -1);
+
+	// register number
+	insert(hm, "zero", 0, 0, 0); insert(hm, "at", 1, 0, 0); insert(hm, "v0", 2, 0, 0); insert(hm, "v1", 3, 0, 0);
+	insert(hm, "a0", 4, 0, 0); insert(hm, "a1", 5, 0, 0); insert(hm, "a2", 6, 0, 0); insert(hm, "a3", 7, 0, 0);
+	insert(hm, "t0", 8, 0, 0); insert(hm, "t1", 9, 0, 0); insert(hm, "t2", 10, 0, 0); insert(hm, "t3", 11, 0, 0);
+	insert(hm, "t4", 12, 0, 0); insert(hm, "t5", 13, 0, 0); insert(hm, "t6", 14, 0, 0); insert(hm, "t7", 15, 0, 0);
+	insert(hm, "s0", 16, 0, 0); insert(hm, "s1", 17, 0, 0); insert(hm, "s2", 18, 0, 0); insert(hm, "s3", 19, 0, 0);
+	insert(hm, "s4", 20, 0, 0); insert(hm, "s5", 21, 0, 0); insert(hm, "s6", 22, 0, 0); insert(hm, "s7", 23, 0, 0);
+	insert(hm, "t8", 24, 0, 0); insert(hm, "t9", 25, 0, 0); insert(hm, "k1", 26, 0, 0); insert(hm, "k2", 27, 0, 0);
+	insert(hm, "gp", 28, 0, 0); insert(hm, "sp", 29, 0, 0); insert(hm, "fp", 30, 0, 0); insert(hm, "ra", 31, 0, 0);
+}
+
+#define oplist_size 100
+#define op_size 5
+
+static unsigned char** op;
+
+void makeOPlist() {
+	op = (char**)malloc(sizeof(char*) * oplist_size);
+	for (int i = 0; i < oplist_size; i++)
+		op[i] = (char*)malloc(sizeof(char) * op_size);
+
+	op[0x08] = "addi"; op[0x0c] = "andi"; op[0x0d] = "ori"; op[0x23] = "lw"; op[0x2b] = "sw";
+	op[0x0a] = "slti"; op[0x04] = "beq"; op[0x05] = "bne"; op[0x02] = "j"; op[0x03] = "jal"; 
+	op[0x3f] = "halt"; op[0x30] = "add"; op[0x32] = "sub"; op[0x34] = "and"; op[0x35] = "or";
+	op[0x37] = "nor"; op[0x10] = "sll"; op[0x12] = "srl"; op[0x13] = "sra"; op[0x3a] = "slt";
+	op[0x18] = "jr";
+}
 
 /**
  * memory[] emulates the memory of the machine
@@ -137,31 +240,144 @@ static inline bool strmatch(char* const str, const char* expect)
  */
 static int process_instruction(unsigned int instr)
 {
-	unsigned char instruction[9];
+	//----------------------------- 2자리씩 4번 저장된 10진수 -> 8자리 16진수
+
+	unsigned char oxinstruction[9];
 	int decimal;
 	int div;
 
 	int idx = 7;
-	while (instr > 0) { //2자리씩 4번 저장된 10진수 -> 8자리 16진수
+	while (instr > 0) { 
 		div = instr % 16;
 		if (div < 10)
-			instruction[idx--] = 48 + div;
+			oxinstruction[idx--] = 48 + div;
 		else
-			instruction[idx--] = 97 + (div - 10);
+			oxinstruction[idx--] = 97 + (div - 10);
 
 		instr /= 16;
 	}
 
 	while (idx >= 0)
-		instruction[idx--] = '0';
-	instruction[8] = '\0';
+		oxinstruction[idx--] = '0';
+	oxinstruction[8] = '\0';
 
-	for (int i = 0; i < 8; i++)
-		printf("%c", instruction[i]);
-	printf("\n");
-	if (!strcmp(instruction, "ffffffff")) 
+	if (!strcmp(oxinstruction, "ffffffff"))
 		return 0;
 
+	printf("0x");
+	for (int i = 0; i < 8; i++)
+		printf("%c", oxinstruction[i]);
+
+	printf("\n");
+	
+	//----------------------------- 8자리 8진수 -> 32자리 2진수
+
+	char binstruction[32];
+	int num;
+
+	for (int i = 7, k = 28, idx = 31; i >= 0; i--, k -= 4) {
+		if (oxinstruction[i] <= 57)
+			num = oxinstruction[i] - '0';
+		else
+			num = oxinstruction[i] - 'a' + 10;
+
+		while (num > 0) {
+			binstruction[idx--] = num % 2;
+			num /= 2;
+		}
+
+		while (idx >= k)
+			binstruction[idx--] = 0;
+	}
+
+	printf("b");
+	for (int i = 0; i <= 31; i++)
+		printf("%d", binstruction[i]);
+
+	printf("\n");
+
+	//------------------------------- 앞 6bit로 opcode 판별
+
+	char* opcode;
+	int funct = 0;
+	int rs = 0, rt = 0, rd = 0;
+	int shamt = 0, value = 0, addr = 0;
+
+	int temp = 0;
+	for (int i = 5, mul = 1; i >= 0; i--, mul <<= 1)
+		temp += binstruction[i] * mul;
+
+	if (temp == 0) {//R_format
+		for (int i = 31, mul = 1; i >= 26; i--, mul <<= 1)
+			funct += binstruction[i] * mul;
+		opcode = op[funct + 16];
+	}
+	else //I_format, J_format
+		opcode = op[temp];
+
+	int* hm_value = search(&hm, opcode);
+	printf("opcode: %s\n", opcode);
+
+	//------------------------------ opcode를 이용해 format을 판별한 뒤, 각 format에 맞게 instruction field를 채움
+
+	int type = hm_value[2];
+
+	printf("type: %d\n", type);
+
+	if (type == r) {
+		for (int i = 10, mul = 1; i >= 6; i--, mul <<= 1)
+			rs += binstruction[i] * mul;
+		for (int i = 15, mul = 1; i >= 11; i--, mul <<= 1)
+			rt += binstruction[i] * mul;
+		for (int i = 20, mul = 1; i >= 16; i--, mul <<= 1)
+			rd += binstruction[i] * mul;
+		for (int i = 25, mul = 1; i >= 21; i--, mul <<= 1)
+			shamt += binstruction[i] * mul;
+
+		printf("%s %d %d %d %d %d\n", opcode, rd, rs, rt, shamt, funct);
+	}
+	else if (type == i) {
+		for (int i = 10, mul = 1; i >= 6; i--, mul <<= 1)
+			rs += binstruction[i] * mul;
+		for (int i = 15, mul = 1; i >= 11; i--, mul <<= 1)
+			rt += binstruction[i] * mul;
+
+		int neg = false;
+		if (binstruction[16] == 1)
+			neg = true;
+		for (int i = 31, mul = 1; i >= 16; i--, mul <<= 1) {
+			if (neg)
+				value += !binstruction[i] * mul;
+			else
+				value += binstruction[i] * mul;
+		}
+
+		if (neg)
+			value = (value * -1) - 1;
+
+		printf("%s %d %d %d\n", opcode, rt, rs, value);
+	}
+	else if (type == j) {
+		int neg = false;
+		if (binstruction[6] == 1)
+			neg = true;
+
+		for (int i = 31, mul = 1; i >= 6; i--, mul <<= 1) {
+			if (neg)
+				addr += !binstruction[i] * mul;
+			else
+				addr += binstruction[i] * mul;
+		}
+
+		if (neg)
+			addr = (addr * -1) - 1;
+
+		printf("%s %d\n", opcode, addr);
+	}
+
+	//------------------------------
+
+	printf("\n\n");
 	return 1;
 }
 
@@ -247,7 +463,6 @@ static int load_program(char* const filename)
 	return 0;
 }
 
-
 /**********************************************************************
  * run_program
  *
@@ -268,8 +483,10 @@ static int load_program(char* const filename)
 static int run_program(void)
 {
 	pc = INITIAL_PC;
+	map hm;
+	makeMap(&hm);
 
-	printf("run program -------------------------------------------------\n\n");
+	printf("run program -------------------------------------------------\n\n\n");
 	while (true) {
 
 		char hexa[8];
@@ -471,6 +688,9 @@ int main(int argc, char* const argv[])
 		printf("*********************************************************\n\n");
 		printf(">> ");
 	}
+
+	makeMap(&hm);
+	makeOPlist();
 
 	while (fgets(command, sizeof(command), input)) {
 		char* tokens[MAX_NR_TOKENS] = { NULL };
