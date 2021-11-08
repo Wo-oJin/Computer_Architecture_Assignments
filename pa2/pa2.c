@@ -23,7 +23,7 @@
  /*====================================================================*/
  /*          ****** DO NOT MODIFY ANYTHING FROM THIS LINE ******       */
 
-/* To avoid security error on Visual Studio */
+ /* To avoid security error on Visual Studio */
 #define _CRT_SECURE_NO_WARNINGS
 #pragma warning(disable : 4996)
 
@@ -34,110 +34,6 @@
 typedef unsigned char bool;
 #define true	1
 #define false	0
-
-#define MAP_SIZE 100
-#define WORD_LEN 5
-enum slotStatus { empty, deleted, inuse };
-enum format { r, i, j };
-typedef int (*hashfunc)(char* key);
-
-typedef struct Slot { //Hash Map을 이루는 각 slot
-	char key[WORD_LEN];
-	int* val;
-	enum slotStatus status;
-}slot;
-
-typedef struct HashMap { //Hash Map
-	slot bucket[MAP_SIZE];
-	hashfunc hf;
-}map;
-
-map hm;
-
-void mapInit(map * hm, hashfunc hf) {
-	for (int i = 0; i < MAP_SIZE; i++)
-		(hm->bucket[i]).status = empty;
-	hm->hf = hf;
-}
-
-int makeHash(char* str) { //인자로 전달된 key값을 hash value로 전환
-	int hash = 0;
-	while (*str != '\0') {
-		hash += (int)(*str) % MAP_SIZE;
-		str++;
-	}
-
-	return hash % MAP_SIZE;
-}
-
-void insert(map * hm, char* key, int val1, int val2, int val3) { //Hash Map에 인자로 전달된 (key, value)를 저장
-	int* arr = (int*)malloc(sizeof(int) * 3);
-	arr[0] = val1; arr[1] = val2; arr[2] = val3;
-	int hv = hm->hf(key);
-
-	while (hm->bucket[hv].status == inuse) {
-		hv++;
-		hv %= MAP_SIZE;
-	}
-
-	hm->bucket[hv].val = arr;
-	strcpy(hm->bucket[hv].key, key);
-	hm->bucket[hv].status = inuse;
-}
-
-int* search(map * hm, char* key) { // Hash Map에서 인자로 전달된 key에 대응되는 value을 반환
-	int hv = hm->hf(key);
-	int temp = hv;
-	while (strcmp(key, hm->bucket[hv].key)) {
-		hv++;
-		hv %= MAP_SIZE;
-
-		if (hv == temp)
-			return NULL;
-	}
-
-	return hm->bucket[hv].val;
-}
-
-void makeMap(map * hm) { // Hash Map 초기화 함수(opcode/funct number, register number)
-	mapInit(hm, makeHash);
-	int* arr;
-
-	// opcode/funct
-	insert(hm, "add", 0, 0x20, r); insert(hm, "addi", 0x08, 0, i); insert(hm, "andi", 0x0c, 0, i); insert(hm, "or", 0, 0x25, r);
-	insert(hm, "sub", 0, 0x22, r); insert(hm, "and", 0, 0x24, r); insert(hm, "ori", 0x0d, 0, i); insert(hm, "nor", 0, 0x27, r);
-	insert(hm, "sll", 0, 0x00, r); insert(hm, "srl", 0, 0x02, r); insert(hm, "sra", 0, 0x03, r); insert(hm, "lw", 0x23, 0, i);
-	insert(hm, "sw", 0x2b, 0, i); insert(hm, "slt", 0, 0x2a, r); insert(hm, "slti", 0x0a, 0, i); insert(hm, "beq", 0x04, 0, i);
-	insert(hm, "bne", 0x05, 0, i); insert(hm, "jr", 0, 0x08, r); insert(hm, "j", 0x02, 0, j); insert(hm, "jal", 0x03, 0, j);
-	insert(hm, "halt", 0x3f, 0, -1);
-
-	// register number
-	insert(hm, "zero", 0, 0, 0); insert(hm, "at", 1, 0, 0); insert(hm, "v0", 2, 0, 0); insert(hm, "v1", 3, 0, 0);
-	insert(hm, "a0", 4, 0, 0); insert(hm, "a1", 5, 0, 0); insert(hm, "a2", 6, 0, 0); insert(hm, "a3", 7, 0, 0);
-	insert(hm, "t0", 8, 0, 0); insert(hm, "t1", 9, 0, 0); insert(hm, "t2", 10, 0, 0); insert(hm, "t3", 11, 0, 0);
-	insert(hm, "t4", 12, 0, 0); insert(hm, "t5", 13, 0, 0); insert(hm, "t6", 14, 0, 0); insert(hm, "t7", 15, 0, 0);
-	insert(hm, "s0", 16, 0, 0); insert(hm, "s1", 17, 0, 0); insert(hm, "s2", 18, 0, 0); insert(hm, "s3", 19, 0, 0);
-	insert(hm, "s4", 20, 0, 0); insert(hm, "s5", 21, 0, 0); insert(hm, "s6", 22, 0, 0); insert(hm, "s7", 23, 0, 0);
-	insert(hm, "t8", 24, 0, 0); insert(hm, "t9", 25, 0, 0); insert(hm, "k1", 26, 0, 0); insert(hm, "k2", 27, 0, 0);
-	insert(hm, "gp", 28, 0, 0); insert(hm, "sp", 29, 0, 0); insert(hm, "fp", 30, 0, 0); insert(hm, "ra", 31, 0, 0);
-}
-
-#define oplist_size 100
-#define op_size 5
-
-char** op;
-
-void makeOPlist() {
-	op = (char**)malloc(sizeof(char*) * oplist_size);
-	for (int i = 0; i < oplist_size; i++)
-		op[i] = (char*)malloc(sizeof(char) * op_size);
-
-	op[0x08] = "addi"; op[0x0c] = "andi"; op[0x0d] = "ori"; op[0x23] = "lw"; op[0x2b] = "sw";
-	op[0x0a] = "slti"; op[0x04] = "beq"; op[0x05] = "bne"; op[0x02] = "j"; op[0x03] = "jal";
-	op[0x3f] = "halt"; op[0x30] = "add"; op[0x32] = "sub"; op[0x34] = "and"; op[0x35] = "or";
-	op[0x37] = "nor"; op[0x10] = "sll"; op[0x12] = "srl"; op[0x13] = "sra"; op[0x3a] = "slt";
-	op[0x18] = "jr";
-}
 
 /**
  * memory[] emulates the memory of the machine
@@ -200,7 +96,56 @@ static inline bool strmatch(char* const str, const char* expect)
 /*          ****** DO NOT MODIFY ANYTHING UP TO THIS LINE ******      */
 /*====================================================================*/
 
-void process_operation(char* op, int* values, int type) {
+enum format { r, i, j }; // 각 foramt을 정수로 변환( r = 0 , i = 1 , j = 2 )
+
+#define operationList_size 0x40
+#define operation_size 5
+
+/*
+* MIPS Operation을 저장하는 배열. idx는 각 operation의 opcode
+*/
+static unsigned char** operationList;
+
+void makeOPlist() { // operation 배열을 초기화
+	operationList = (char**)malloc(sizeof(char*) * operationList_size);
+	for (int i = 0; i < operationList_size; i++)
+		operationList[i] = (char*)malloc(sizeof(char) * operation_size);
+
+	operationList[0x08] = "addi"; operationList[0x0c] = "andi"; operationList[0x0d] = "ori"; operationList[0x23] = "lw"; operationList[0x2b] = "sw";
+	operationList[0x0a] = "slti"; operationList[0x04] = "beq"; operationList[0x05] = "bne"; operationList[0x02] = "j"; operationList[0x03] = "jal";
+	operationList[0x3f] = "halt"; operationList[0x30] = "add"; operationList[0x32] = "sub"; operationList[0x34] = "and"; operationList[0x35] = "or";
+	operationList[0x37] = "nor"; operationList[0x10] = "sll"; operationList[0x12] = "srl"; operationList[0x13] = "sra"; operationList[0x3a] = "slt";
+	operationList[0x18] = "jr";
+}
+
+/*
+* MIPS operation에 대응하는 type을 저장하는 배열. idx는 해당 operation의 opcode
+*/
+static unsigned char* typeList;
+
+void makeTypeList() { // typeList 배열을 초기화
+	typeList = (char*)malloc(sizeof(char) * operationList_size);
+
+	typeList[0x08] = i; typeList[0x0c] = i; typeList[0x0d] = i; typeList[0x23] = i; typeList[0x2b] = i;
+	typeList[0x0a] = i; typeList[0x04] = i; typeList[0x05] = i; typeList[0x02] = j; typeList[0x03] = j;
+	typeList[0x18] = r; typeList[0x30] = r; typeList[0x32] = r; typeList[0x34] = r; typeList[0x35] = r;
+	typeList[0x37] = r; typeList[0x30] = r; typeList[0x32] = r; typeList[0x34] = r; typeList[0x3a] = r;
+	typeList[0x3f] = -1;
+}
+
+/**
+ * process_operation
+ *
+ * DESCRIPTION
+ *   operation에 맞게 instruction을 수행한다
+ * 
+	 parameters: 
+ *	 (1) operation : instruction의 operation 
+ *   (2) values : instruction format을 구성하는 모든 filed 값들
+ *   (3) type : instruction의 type
+ *  
+ */
+void process_operation(char* operation, int* values, int type) {
 
 	/// R: values[0]=rs, values[1]=rt, values[2]=rd, values[3]=shamt, values[4]=funct
 	/// I: values[0]=rs, values[1]=rt, values[3]=immediate value
@@ -226,43 +171,41 @@ void process_operation(char* op, int* values, int type) {
 	else if (type == 2) //J
 		addr = values[0];
 
-	if (!strcmp(op, "add")) { //R
+	if (!strcmp(operation, "add")) { //R
 		registers[rd] = registers[rs] + registers[rt];
-		//printf("add rs: %u rt: %u", registers[rs], registers[rt]);
 	}
-	else if (!strcmp(op, "addi")) { //I
+	else if (!strcmp(operation, "addi")) { //I
 		if (rs == 29 && value >= 0) { //$ra
 			for (int i = 0; i < value; i++)
 				memory[registers[rs] + i] = 0;
 		}
 		registers[rt] = registers[rs] + value;
-		//printf("addi rs: %u rt: %u", registers[rs], registers[rt]);
 	}
-	else if (!strcmp(op, "sub")) { //R
+	else if (!strcmp(operation, "sub")) { //R
 		registers[rd] = registers[rs] - registers[rt];
 	}
-	else if (!strcmp(op, "and")) { //R
+	else if (!strcmp(operation, "and")) { //R
 		registers[rd] = registers[rs] & registers[rt];
 	}
-	else if (!strcmp(op, "andi")) { //I
+	else if (!strcmp(operation, "andi")) { //I
 		registers[rt] = registers[rs] & value;
 	}
-	else if (!strcmp(op, "or")) { //R
+	else if (!strcmp(operation, "or")) { //R
 		registers[rd] = registers[rs] | registers[rt];
 	}
-	else if (!strcmp(op, "ori")) { //I
+	else if (!strcmp(operation, "ori")) { //I
 		registers[rt] = registers[rs] | value;
 	}
-	else if (!strcmp(op, "nor")) { //R
+	else if (!strcmp(operation, "nor")) { //R
 		registers[rd] = ~(registers[rs] | registers[rt]);
 	}
-	else if (!strcmp(op, "sll")) { //R
+	else if (!strcmp(operation, "sll")) { //R
 		registers[rd] = registers[rt] << shamt;
 	}
-	else if (!strcmp(op, "srl")) { //R
+	else if (!strcmp(operation, "srl")) { //R
 		registers[rd] = registers[rt] >> shamt;
 	}
-	else if (!strcmp(op, "sra")) { //R
+	else if (!strcmp(operation, "sra")) { //R
 		if (registers[rt] >> 31 == 1) {
 			int shamt_tp = 32 - shamt;
 			registers[rd] = (registers[rt] >> shamt) + (0xffffffff << shamt_tp);
@@ -271,7 +214,7 @@ void process_operation(char* op, int* values, int type) {
 		else
 			registers[rd] = registers[rt] >> shamt;
 	}
-	else if (!strcmp(op, "lw")) { //I
+	else if (!strcmp(operation, "lw")) { //I
 		temp = registers[rs] + value;
 
 		unsigned int first = (unsigned int)memory[temp];
@@ -283,9 +226,8 @@ void process_operation(char* op, int* values, int type) {
 
 		registers[rt] = temp;
 		temp = registers[rs] + value;
-		//printf("memory(%d~%d): %02x %02x %02x %02x\n", registers[rs] + value, registers[rs] + value + 3, memory[temp], memory[temp + 1], memory[temp + 2], memory[temp + 3]);
 	}
-	else if (!strcmp(op, "sw")) { //I
+	else if (!strcmp(operation, "sw")) { //I
 		temp = registers[rs] + value;
 		int target = registers[rt];
 
@@ -298,47 +240,42 @@ void process_operation(char* op, int* values, int type) {
 		memory[temp + 1] = (second / 16) * 16 + (second % 16);
 		memory[temp + 2] = (third / 16) * 16 + (third % 16);
 		memory[temp + 3] = (fourth / 16) * 16 + (fourth % 16);
-		//printf("memory(%d~%d): %02x %02x %02x %02x\n", registers[rs] + value, registers[rs] + value + 3, memory[temp], memory[temp + 1], memory[temp + 2], memory[temp + 3]);
 	}
-	else if (!strcmp(op, "slt")) { //R
+	else if (!strcmp(operation, "slt")) { //R
 		if ((signed)registers[rs] < (signed)registers[rt])
 			registers[rd] = 1;
 		else
 			registers[rd] = 0;
 	}
-	else if (!strcmp(op, "slti")) { //I
+	else if (!strcmp(operation, "slti")) { //I
 		if (registers[rs] < value)
 			registers[rt] = 1;
 		else
 			registers[rt] = 0;
-		//printf("slti rs: %u rt: %u", registers[rs], registers[rt]);
 	}
-	else if (!strcmp(op, "beq")) { //I
+	else if (!strcmp(operation, "beq")) { //I
 		if (registers[rs] == registers[rt]) {
 			pc += (value << 2);
 		}
-		//printf("beq rs: %u rt: %u", registers[rs], registers[rt]);
 	}
-	else if (!strcmp(op, "bne")) { //I
+	else if (!strcmp(operation, "bne")) { //I
 		if (registers[rs] != registers[rt]) {
 			pc += (value << 2);
 		}
 	}
-	else if (!strcmp(op, "jr")) { //R
-		//printf("ra: %u\n", registers[rs]);
+	else if (!strcmp(operation, "jr")) { //R
 		pc = registers[rs];
 	}
-	else if (!strcmp(op, "j")) { //J
-		temp = ((pc >> 26) & 0x0000003c); //opcode의 상위 4bit
+	else if (!strcmp(operation, "j")) { //J
+		temp = ((pc >> 26) & 0x0000003c); //현재 pc값의 상위 4bit
 		pc = (addr << 2) + (temp << 26); //word -> address
 	}
-	else if (!strcmp(op, "jal")) { //J
-		temp = ((pc >> 26) & 0x0000003c); //opcode의 상위 4bit
+	else if (!strcmp(operation, "jal")) { //J
+		temp = ((pc >> 26) & 0x0000003c); //현재 pc값의 상위 4bit
 		registers[31] = pc; // 현재 pc값을 ra에 저장
 		pc = (addr << 2) + (temp << 26); //word -> address
 	}
 }
-
 
 /**********************************************************************
  * process_instruction
@@ -379,9 +316,9 @@ void process_operation(char* op, int* values, int type) {
  */
 static int process_instruction(unsigned int instr)
 {
-	//----------------------------- 2자리씩 4번 저장된 10진수 -> 8자리 16진수
+	//----------------------------- 10진수 instruction -> 8자리 16진수로 변환
 
-	char oxinstruction[9];
+	char oxinstruction[9]; // 16진수 instruction
 	int decimal;
 	int div;
 
@@ -400,18 +337,11 @@ static int process_instruction(unsigned int instr)
 		oxinstruction[idx--] = '0';
 	oxinstruction[8] = '\0';
 
-	if (!strcmp(oxinstruction, "ffffffff")) {
-		//printf("탈출!\n");
+	if (!strcmp(oxinstruction, "ffffffff")) { //halt를 만나면 종료
 		return 0;
 	}
 
-	/*printf("0x");
-	for (int i = 0; i < 8; i++)
-		printf("%c", oxinstruction[i]);
-
-	printf("\n\n");*/
-
-	//----------------------------- 8자리 8진수 -> 32자리 2진수
+	//----------------------------- 8자리 8진수 -> 32자리 2진수로 변환
 
 	char binstruction[32];
 	int num;
@@ -431,37 +361,40 @@ static int process_instruction(unsigned int instr)
 			binstruction[idx--] = 0;
 	}
 
-	/*printf("b");
-	for (int i = 0; i <= 31; i++)
-		printf("%d", binstruction[i]);
+	//------------------------------- 32자리 2진수의 앞 6bit로 opcode 판별
 
-	printf("\n");*/
-
-	//------------------------------- 앞 6bit로 opcode 판별
-
-	char* opcode;
+	char* operation;
 	int rs = 0, rt = 0, rd = 0;
 	int shamt = 0, funct = 0, value = 0, addr = 0;
 
-	int temp = 0;
+	int opcode = 0;
 	for (int i = 5, mul = 1; i >= 0; i--, mul <<= 1)
-		temp += binstruction[i] * mul;
+		opcode += binstruction[i] * mul;
 
-	if (temp == 0) {//R_format
-		for (int i = 31, mul = 1; i >= 26; i--, mul <<= 1)
+	if (opcode == 0) {//R_format
+		for (int i = 31, mul = 1; i >= 26; i--, mul <<= 1) //R_format은 opcode = 0이니 funct로 판별
 			funct += binstruction[i] * mul;
-		opcode = op[funct + 16];
+		operation = operationList[funct + 16];
 	}
 	else //I_format, J_format
-		opcode = op[temp];
+		operation = operationList[opcode];
 
-	int* hm_value = search(&hm, opcode);
-	//printf("opcode: %s\n", opcode);
+	int type=0;
+
+	for (int i = 0; i < 0x40; i++) {
+		if (!strcmp(operation, operationList[i])) {
+			type = typeList[i];
+			break;
+		}
+	}
 
 	//------------------------------ opcode를 이용해 format을 판별한 뒤, 각 format에 맞게 instruction field를 채움
 
-	int values[5] = { 0 };
-	int type = hm_value[2];
+	int values[5] = { 0 }; //filed 값을 저장
+
+	/// R: values[0]=rs, values[1]=rt, values[2]=rd, values[3]=shamt, values[4]=funct
+	/// I: values[0]=rs, values[1]=rt, values[3]=immediate value
+	/// J: values[0]=address
 
 	if (type == r) {
 		for (int i = 10, mul = 1; i >= 6; i--, mul <<= 1)
@@ -473,7 +406,6 @@ static int process_instruction(unsigned int instr)
 		for (int i = 25, mul = 1; i >= 21; i--, mul <<= 1)
 			shamt += binstruction[i] * mul;
 
-		//printf("%s %d %d %d %d %d\n", opcode, rd, rs, rt, shamt, funct);
 		values[0] = rs, values[1] = rt, values[2] = rd, values[3] = shamt, values[4] = funct;
 	}
 	else if (type == i) {
@@ -483,7 +415,7 @@ static int process_instruction(unsigned int instr)
 			rt += binstruction[i] * mul;
 
 		int neg = false;
-		if ( (binstruction[16] == 1) && !( !(strcmp(opcode,"andi")) || !(strcmp(opcode, "ori"))))
+		if ( (binstruction[16] == 1) && !( !(strcmp(operation,"andi")) || !(strcmp(operation, "ori"))))
 			neg = true;
 		for (int i = 31, mul = 1; i >= 16; i--, mul <<= 1) {
 			if (neg)
@@ -495,22 +427,19 @@ static int process_instruction(unsigned int instr)
 		if (neg)
 			value = (value * -1) - 1;
 
-		//printf("%s %d %d %d\n", opcode, rt, rs, value);
 		values[0] = rs, values[1] = rt, values[2] = value;
 	}
 	else if (type == j) {
 		for (int i = 31, mul = 1; i >= 6; i--, mul <<= 1)
 			addr += binstruction[i] * mul;
 
-		//printf("%s %d\n", opcode, addr);
 		values[0] = addr;
 	}
 
 	//------------------------------
 
-	process_operation(opcode, values, type);
+	process_operation(operation, values, type); // 분해한 instruction을 operation에 맞게 실행
 
-	//printf("\n\n");
 	return 1;
 }
 
@@ -549,9 +478,9 @@ static int __parse_command(char* command, int* nr_tokens, char* tokens[]);
 
 static int load_program(char* const filename)
 {
-	FILE* input = fopen(filename, "r");
+	FILE* input = fopen(filename, "r"); //input stream을 통해 file을 읽어옴
 	if (!input) {
-		//printf("file open error!\n");
+		printf("file open error!\n");
 		return -EINVAL;
 	}
 
@@ -567,7 +496,7 @@ static int load_program(char* const filename)
 		if (__parse_command(command, &nr_tokens, tokens) < 0)
 			continue;
 
-		unsigned int decimal = strtoimax(tokens[0], NULL, 16);
+		unsigned int decimal = strtoimax(tokens[0], NULL, 16); //instruction을 10진수로 변환
 		int hexa[8] = { 0 };
 
 		long div;
@@ -614,10 +543,7 @@ static int load_program(char* const filename)
 static int run_program(void)
 {
 	pc = INITIAL_PC;
-	map hm;
-	makeMap(&hm);
 
-	//printf("run program -------------------------------------------------\n\n\n");
 	while (true) {
 		char hexa[8];
 		int decimal;
@@ -648,15 +574,12 @@ static int run_program(void)
 				instruction += (hexa[i] - 'a' + 10) * mul;
 		}
 
-		//printf("\npc: 0x%08x\n", pc);
 		pc += 4;
 
 		int flag = process_instruction(instruction);
-		//printf("a0 v0 t0 sp: %u %u %u %u\n\n", registers[4], registers[2], registers[8],registers[29]);
 		if (!flag)  //meet halt
 			break;
 	}
-	//printf("\nfinish program -------------------------------------------------\n\n");
 
 	return 0;
 }
@@ -793,8 +716,8 @@ static int __parse_command(char* command, int* nr_tokens, char* tokens[])
 int main(int argc, char* const argv[])
 {
 	char command[MAX_COMMAND] = { '\0' };
-	//FILE* input = stdin;
-	FILE* input = fopen("C:\\Users\\dnwls\\input_file\\input4.txt","r");
+	FILE* input = stdin;
+	//FILE* input = fopen("C:\\Users\\dnwls\\input_file\\input.txt","r");
 
 	if (argc > 1) {
 		input = fopen(argv[1], "r");
@@ -820,14 +743,13 @@ int main(int argc, char* const argv[])
 		printf(">> ");
 	}
 
-	makeMap(&hm);
 	makeOPlist();
+	makeTypeList();
 
 	while (fgets(command, sizeof(command), input)) {
 		char* tokens[MAX_NR_TOKENS] = { NULL };
 		int nr_tokens = 0;
 
-		//printf("command: %s\n", command);
 		for (size_t i = 0; i < strlen(command); i++) {
 			command[i] = tolower(command[i]);
 		}
