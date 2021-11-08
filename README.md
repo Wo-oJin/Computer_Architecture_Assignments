@@ -12,4 +12,4 @@
 
     1. load_program()은 Input Stream에 주어지는 file에 있는 instrucion들을 memory에 저장합니다.
     2. run_program()은 memory에 있는 instruction을 하나하나 load 하여 실행합니다.
-    3. process_instruction은 run_program()에서 불려지며 1개의 instruction을 처리하는 함수입니다.</br>
+    3. process_instruction은 run_program()에서 불려지며 1개의 instruction을 처리하는 함수입니다.
