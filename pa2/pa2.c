@@ -209,7 +209,6 @@ void process_operation(char* operation, int* values, int type) {
 		if (registers[rt] >> 31 == 1) {
 			int shamt_tp = 32 - shamt;
 			registers[rd] = (registers[rt] >> shamt) + (0xffffffff << shamt_tp);
-			registers[rd] = (registers[rt] >> shamt) + (0xffffffff << shamt_tp);
 		}
 		else
 			registers[rd] = registers[rt] >> shamt;
@@ -248,7 +247,7 @@ void process_operation(char* operation, int* values, int type) {
 			registers[rd] = 0;
 	}
 	else if (!strcmp(operation, "slti")) { //I
-		if (registers[rs] < value)
+		if ((signed)registers[rs] < value)
 			registers[rt] = 1;
 		else
 			registers[rt] = 0;
@@ -485,7 +484,7 @@ static int load_program(char* const filename)
 	}
 
 	char command[MAX_COMMAND] = { '\0' };
-	unsigned int tp_pc = pc;
+	
 	while (fgets(command, sizeof(command), input)) {
 		char* tokens[MAX_NR_TOKENS] = { NULL };
 		int nr_tokens = 0;
@@ -496,29 +495,24 @@ static int load_program(char* const filename)
 		if (__parse_command(command, &nr_tokens, tokens) < 0)
 			continue;
 
-		unsigned int decimal = strtoimax(tokens[0], NULL, 16); //instruction을 10진수로 변환
-		int hexa[8] = { 0 };
+		char* token = tokens[0];
+		char hexa[8] = { 0 };
 
-		long div;
-		int idx = 7;
-		while (decimal > 0) {
-			div = decimal % 16;
-			decimal /= 16;
-
-			hexa[idx--] = div;
+		for (int i = 2; i <= 9; i++) {
+			if (token[i] <= 57)
+				token[i] = token[i] - '0';
+			else
+				token[i] = token[i] - 'a' + 10;
 		}
 
-		while (idx >= 0)
-			hexa[idx--] = 0;
+		for (int i = 3, k = 9; i >= 0; i--, k -= 2) 
+			memory[pc + i] = token[k-1] * 16 + token[k];
 
-		for (int i = 3, k = 7; i >= 0; i--, k -= 2)
-			memory[tp_pc + i] = (hexa[k - 1] * 16) + hexa[k];
-
-		tp_pc += 4;
+		pc += 4;
 	}
 
 	for (int i = 3; i >= 0; i--)
-		memory[tp_pc + i] = 0xff;
+		memory[pc + i] = 0xff;
 
 	return 0;
 }
@@ -549,7 +543,7 @@ static int run_program(void)
 		int decimal;
 		int div;
 
-		for (int i = 0, k = 0; i < 4; i++) { //2자리씩 4번 저장된 10진수 -> 8자리 16진수
+		for (int i = 0, k = 0; i < 4; i++) { //2자리씩 4번 저장된 16진수 -> 8자리 16진수
 			decimal = memory[pc + i];
 
 			div = decimal / 16;
@@ -565,14 +559,7 @@ static int run_program(void)
 				hexa[k++] = 97 + (div - 10);
 		}
 
-		unsigned int instruction = 0;
-		int mul = 1;
-		for (int i = 7; i >= 0; i--, mul *= 16) {
-			if (hexa[i] <= 57)
-				instruction += (hexa[i] - '0') * mul;
-			else
-				instruction += (hexa[i] - 'a' + 10) * mul;
-		}
+		unsigned int instruction = strtoimax(hexa, NULL, 16);
 
 		pc += 4;
 
@@ -716,8 +703,8 @@ static int __parse_command(char* command, int* nr_tokens, char* tokens[])
 int main(int argc, char* const argv[])
 {
 	char command[MAX_COMMAND] = { '\0' };
-	FILE* input = stdin;
-	//FILE* input = fopen("C:\\Users\\dnwls\\input_file\\input.txt","r");
+	//FILE* input = stdin;
+	FILE* input = fopen("C:\\Users\\dnwls\\input_file\\input.txt","r");
 
 	if (argc > 1) {
 		input = fopen(argv[1], "r");
