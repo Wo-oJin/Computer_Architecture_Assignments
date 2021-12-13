@@ -1,5 +1,3 @@
-#### 각 과제별 수행 내용은 다음과 같습니다.</br></br>
-
 **PA0**: **Implement a simple string parser to get familiar with PASubmit system</br></br>**
          string과 관련된 library를 사용하지 않고, 사용자가 입력한 문자열에서 White Space를 기준으로 분리된 문자들을 저장하는 parse_command 함수 구현.</br></br>
          (정확한 과제 내용은 https://git.ajou.ac.kr/sslab/ca-pa0 에서 확인하실 수 있습니다.)</br></br></br>
