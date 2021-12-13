@@ -156,28 +156,25 @@ int* point_mem;
 int load_word(unsigned int addr)
 {
 	int block_addr = addr >> (log2_discrete(nr_words_per_block) + 2); //+2는 word의 default size가 4byte라 그럼
+	int set_num = block_addr % nr_sets; // cache block의 index 결정
+	
+	int block_len = BYTES_PER_WORD * nr_words_per_block; // cache block 1개당 크기(byte)
 
-	int block_num = block_addr % nr_sets; //set=1 -> fully , set = nr_blocks/nr_way -> n-way , set=n = directed mapping
-	int block_len = BYTES_PER_WORD * nr_words_per_block;
+	int start = nr_ways * set_num; // cache[nr_ways*block_num]부터 탐색 시작 = set이 시작하는 주소부터 시작
+	int tag_bit = (BYTES_PER_WORD * 8) - (log2_discrete(nr_sets)) - (log2_discrete(nr_words_per_block) + 2); 
 
-	int start = nr_ways * block_num; // cache[nr_ways*block_num]부터 탐색 시작 = set이 시작하는 주소부터 시작
-	int tag_bit = (BYTES_PER_WORD * 8) - (log2_discrete(nr_words_per_block) + 2) - (log2_discrete(nr_sets));
-	int data = 0, small_cb = start, small_time = 1000000000;
 
-	for (int i = start; i < start + nr_ways; i++) { // i의 단위는 way .. way 1개당 words_per_block개의 word 존재
-		if (small_time > cache[i].timestamp) { // LRU를 위해 미리 Time Stamp 값을 구해 놓음
-			small_time = cache[i].timestamp;
-			small_cb = i;
-		}
+	/////// 1. memory에 접근해야 하는 주소를 변환한 tag가 있는지 확인
 
-		if (((addr >> ((BYTES_PER_WORD * 8) - tag_bit)) == cache[i].tag) && (cache[i].valid == CB_VALID)) { // 1. tag가 일치하면(way에 있는 모든 word의 tag는 같음)
-
+	for (int i = start; i < start + nr_ways; i++) { // i의 단위는 way(cache block)
+		if (((addr >> ((BYTES_PER_WORD * 8) - tag_bit)) == cache[i].tag) && (cache[i].valid == CB_VALID)) { // tag가 일치하는지 확인
 			cache[i].timestamp = cycles;
 			return CACHE_HIT;
 		}
 	}
 
-	//cache에 찾는 addr 없음
+	////// 2.cache에 찾는 addr 없으므로, 빈 cache block이 있는지 확인
+
 	for (int i = start; i < start + nr_ways; i++) { // invalid한 cb가 있는지 확인
 		if (cache[i].valid == CB_INVALID) { //invalid한 cb가 있다면
 			for (int k = 0; k < block_len; k++)  //cache에 해당 addr memory 값 load
@@ -191,21 +188,32 @@ int load_word(unsigned int addr)
 		}
 	}
 
-	// cache에 찾는 addr도 없고, 모든 cb에 data가 들어있다면
-	if (cache[small_cb].dirty == CB_DIRTY) { //만약 dirty한 cb였다면 memory 갱신
-		for (int i = 0; i < block_len ; i++)
-			memory[point_mem[small_cb] + i] = cache[small_cb].data[i];
 
-		cache[small_cb].dirty = CB_CLEAN; //memory에 값을 옮겼으니 clean으로 변경
+	////// 3. cache에 찾는 addr도 없고, 모든 cache block에 data가 들어있다면
+
+	int replacement_cb = start, replacement_cb_time = 1000000000;
+
+	for (int i = start; i < start + nr_ways; i++) { //LRU 대상이 되는 cache block을 찾는다
+		if (replacement_cb_time > cache[i].timestamp) { 
+			replacement_cb_time = cache[i].timestamp;
+			replacement_cb = i;
+		}
+	}
+
+	if (cache[replacement_cb].dirty == CB_DIRTY) { //만약 dirty한 cb였다면 memory 갱신
+		for (int i = 0; i < block_len ; i++)
+			memory[point_mem[replacement_cb] + i] = cache[replacement_cb].data[i];
+
+		cache[replacement_cb].dirty = CB_CLEAN; //memory에 값을 옮겼으니 clean으로 변경
 	}
 
 	for (int i = 0; i < block_len; i++) { //time stamp 값이 제일 낮은 cb를 교체{
-		cache[small_cb].data[i] = memory[(addr / block_len) * block_len + i];
+		cache[replacement_cb].data[i] = memory[(addr / block_len) * block_len + i];
 	}
 
-	cache[small_cb].tag = (addr >> ((BYTES_PER_WORD * 8) - tag_bit));
-	point_mem[small_cb] = addr;
-	cache[small_cb].timestamp = cycles;
+	cache[replacement_cb].tag = (addr >> ((BYTES_PER_WORD * 8) - tag_bit));
+	point_mem[replacement_cb] = addr;
+	cache[replacement_cb].timestamp = cycles;
 
 	return CACHE_MISS;
 }
@@ -230,24 +238,18 @@ int load_word(unsigned int addr)
 int store_word(unsigned int addr, unsigned int data)
 {
 	int block_addr = addr >> (log2_discrete(nr_words_per_block) + 2); //+2는 word의 default size가 4byte라 그럼
-	int block_num = block_addr % nr_sets; //set=1 -> fully , set = nr_blocks/nr_way -> n-way , set=n = directed mapping
+	int set_num = block_addr % nr_sets; // cache block의 index 결정 
+	
 	int block_len = BYTES_PER_WORD * nr_words_per_block;
 
-	int start = nr_ways * block_num; // cache[nr_ways*block_num]부터 탐색 시작 = set이 시작하는 주소부터 시작
+	int start = nr_ways * set_num; // cache[nr_ways*block_num]부터 탐색 시작 = set이 시작하는 주소부터 시작
 	int tag_bit = (BYTES_PER_WORD * 8) - (log2_discrete(nr_words_per_block) + 2) - (log2_discrete(nr_sets));
-	int small_cb = start, small_time = 1000000000;
 
-	// 만약 tag가 같은 cb가 있으면, 단순히 값과 cycle만 바꾸면 된다
-	// tag가 다르지만, 빈 공간이 있을 경우 그 공간에 쓴다
-	// tag도 다르고 빈 공간도 없으면 lru
+	/////// 1. memory에 접근해야 하는 주소를 변환한 tag가 있는지 확인
 
-	for (int i = start; i < start + nr_ways; i++) { // i의 단위는 way .. way 1개당 words_per_block개의 word 존재
-		if (small_time > cache[i].timestamp) { // LRU를 위해 미리 Time Stamp 값을 구해 놓음
-			small_time = cache[i].timestamp;
-			small_cb = i;
-		}
-
-		if ((addr >> ((BYTES_PER_WORD * 8) - tag_bit)) == cache[i].tag && (cache[i].valid == CB_VALID)) { // 1. tag가 일치하면(way에 있는 모든 word의 tag는 같음)
+	for (int i = start; i < start + nr_ways; i++) { // i의 단위는 way(cache block)
+		
+		if ((addr >> ((BYTES_PER_WORD * 8) - tag_bit)) == cache[i].tag && (cache[i].valid == CB_VALID)) { // tag가 일치하는지 확인
 			cache[i].data[(addr-point_mem[i]) + 0] = (data >> 24) & 0x000000ff;
 			cache[i].data[(addr-point_mem[i]) + 1] = (data >> 16) & 0x000000ff;
 			cache[i].data[(addr-point_mem[i]) + 2] = (data >> 8) & 0x000000ff;
@@ -259,7 +261,8 @@ int store_word(unsigned int addr, unsigned int data)
 		}
 	}
 
-	//cache에 찾는 addr 없음
+	////// 2.cache에 찾는 addr 없으므로, 빈 cache block이 있는지 확인
+
 	for (int i = start; i < start + nr_ways; i++) { // invalid한 cb가 있는지 확인
 		if (cache[i].valid == CB_INVALID) { //invalid한 cb가 있다면
 			//cache에 해당 addr memory 값 load
@@ -281,26 +284,36 @@ int store_word(unsigned int addr, unsigned int data)
 		}
 	}
 
-	// cache에 찾는 addr도 없고, 모든 cb에 data가 들어있다면
-	if (cache[small_cb].dirty == CB_DIRTY) { //만약 dirty한 cb였다면 memory 갱신
+	////// 3. cache에 찾는 addr도 없고, 모든 cache block에 data가 들어있다면
+	
+	int replacement_cb = start, replacement_cb_time = 1000000000;
+
+	for (int i = start; i < start + nr_ways; i++) { //LRU 대상이 되는 cache block을 찾는다
+		if (replacement_cb_time > cache[i].timestamp) {
+			replacement_cb_time = cache[i].timestamp;
+			replacement_cb = i;
+		}
+	}
+
+	if (cache[replacement_cb].dirty == CB_DIRTY) { //만약 dirty한 cb였다면 memory 갱신
 		for (int i = 0; i < BYTES_PER_WORD * nr_words_per_block; i++)
-			memory[point_mem[small_cb] + i] = cache[small_cb].data[i];
+			memory[point_mem[replacement_cb] + i] = cache[replacement_cb].data[i];
 	}
 
 	//time stamp 값이 제일 낮은 cb를 교체{
 	for (int i = 0; i < BYTES_PER_WORD * nr_words_per_block; i++)  //cache에 해당 addr memory 값 load
-		cache[small_cb].data[i] = memory[(addr / block_len) * block_len + i];
+		cache[replacement_cb].data[i] = memory[(addr / block_len) * block_len + i];
 
-	point_mem[small_cb] = (addr / block_len) * block_len;
+	point_mem[replacement_cb] = (addr / block_len) * block_len;
 
-	cache[small_cb].data[(addr - point_mem[small_cb]) + 0] = (data >> 24) & 0x000000ff;
-	cache[small_cb].data[(addr - point_mem[small_cb]) + 1] = (data >> 16) & 0x000000ff;
-	cache[small_cb].data[(addr - point_mem[small_cb]) + 2] = (data >> 8) & 0x000000ff;
-	cache[small_cb].data[(addr - point_mem[small_cb]) + 3] = (data >> 0) & 0x000000ff;
+	cache[replacement_cb].data[(addr - point_mem[replacement_cb]) + 0] = (data >> 24) & 0x000000ff;
+	cache[replacement_cb].data[(addr - point_mem[replacement_cb]) + 1] = (data >> 16) & 0x000000ff;
+	cache[replacement_cb].data[(addr - point_mem[replacement_cb]) + 2] = (data >> 8) & 0x000000ff;
+	cache[replacement_cb].data[(addr - point_mem[replacement_cb]) + 3] = (data >> 0) & 0x000000ff;
 
-	cache[small_cb].tag = addr >> ((BYTES_PER_WORD * 8) - tag_bit);
-	cache[small_cb].timestamp = cycles;
-	cache[small_cb].dirty = CB_DIRTY;
+	cache[replacement_cb].tag = addr >> ((BYTES_PER_WORD * 8) - tag_bit);
+	cache[replacement_cb].timestamp = cycles;
+	cache[replacement_cb].dirty = CB_DIRTY;
 
 	return CACHE_MISS;
 }
@@ -316,7 +329,7 @@ void init_simulator(void)
 {
 	/* TODO: You may place your initialization code here */
 
-	point_mem = (int*)malloc(sizeof(int) * nr_blocks); // cache block의 index와 매치되며, 각 block이 어느 memory를 시작으로 하는 block data를 담고 있는지 저장
+	point_mem = (int*)malloc(sizeof(int) * nr_blocks); // cache block의 index와 매치되며, 각 cache block의 시작 address를 저장
 	for (int i = 0; i < nr_blocks; i++)
 		point_mem[i] = 0;
 }
