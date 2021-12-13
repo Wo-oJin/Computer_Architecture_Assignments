@@ -1,4 +1,3 @@
-### 컴퓨터 구조 과목시간에 수행한 과제들을 모아놓은 저장소입니다.
 #### 각 과제별 수행 내용은 다음과 같습니다.</br></br>
 
 **PA0**: Implement a simple string parser to get familiar with PASubmit system</br></br>
@@ -21,5 +20,6 @@
          CPU와 Main Memory 사이에 존재하는 Cache의 lw, sw 기능 구현</br></br>
          (정확한 과제 내용은 https://git.ajou.ac.kr/sslab/ca-pa3 에서 확인하실 수 있습니다.)
 
-    1. load_word()는 memory에 있는 data를 cache에 block 단위로 저장합니다.
-    2. store_word()는 입력된 데이터를 cachr에 저장합니다.
+    1  Write-Back cache이며, Replacement Policy는 LRU 방식을 따릅니다.
+    2. load_word()는 memory에 있는 data를 cache에 block 단위로 저장합니다.
+    3. store_word()는 입력된 데이터를 cache에 저장합니다.
